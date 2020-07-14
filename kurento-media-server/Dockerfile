@@ -119,6 +119,9 @@ ENV GST_DEBUG_NO_COLOR=1 \
 # Expose default Kurento RPC control port
 EXPOSE 8888
 
+# Custom config
+COPY ./SdpEndpoint.conf.json /etc/kurento/modules/kurento/SdpEndpoint.conf.json
+
 COPY ./entrypoint.sh /entrypoint.sh
 COPY ./healthchecker.sh /healthchecker.sh
 

@@ -1,0 +1,32 @@
+image: docker
+
+stages:
+  - build
+
+variables:
+  DOCKER_REGISTRY: '519336302233.dkr.ecr.us-east-1.amazonaws.com'
+  DOCKER_HOST: tcp://docker:2375/
+  DOCKER_IMAGE: "kurento-media-server"
+
+services:
+  - name: docker:dind
+    entrypoint: ["env", "-u", "DOCKER_HOST"]
+    command: ["dockerd-entrypoint.sh"]
+
+before_script:
+  - mkdir -p ~/.ssh
+  - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+  - echo "$DEPLOYMENT_IDENTITY" | base64 -d > ~/.ssh/id_rsa # this public key should be moved to another account
+  - chmod 600 ~/.ssh/id_rsa
+  - apk add --no-cache aws-cli git
+  - git submodule update --init
+  - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $DOCKER_REGISTRY
+  - docker info
+
+build:
+  stage: build
+  script:
+    - docker pull "$DOCKER_REGISTRY/$DOCKER_IMAGE:$CI_COMMIT_REF_SLUG" || true
+    - docker build --cache-from "$DOCKER_REGISTRY/$DOCKER_IMAGE:$CI_COMMIT_REF_SLUG" --tag "$DOCKER_REGISTRY/$DOCKER_IMAGE":$CI_COMMIT_SHA --tag "$DOCKER_REGISTRY/$DOCKER_IMAGE":$CI_COMMIT_REF_SLUG $DOCKER_IMAGE
+    - docker push "$DOCKER_REGISTRY/$DOCKER_IMAGE:$CI_COMMIT_SHA
+    - docker push "$DOCKER_REGISTRY/$DOCKER_IMAGE:$CI_COMMIT_REF_SLUG
